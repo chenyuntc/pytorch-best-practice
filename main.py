@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from torchnet import meter
 from utils.visualize import Visualizer
+from tqdm import tqdm
 
 def test(**kwargs):
     opt.parse(kwargs)
@@ -78,7 +79,7 @@ def train(**kwargs):
         loss_meter.reset()
         confusion_matrix.reset()
 
-        for ii,(data,label) in enumerate(train_dataloader):
+        for ii,(data,label) in tqdm(enumerate(train_dataloader),total=len(train_data)):
 
             # train model 
             input = Variable(data)
