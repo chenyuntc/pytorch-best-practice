@@ -23,7 +23,11 @@ class DogCat(data.Dataset):
             imgs = sorted(imgs,key=lambda x:int(x.split('.')[-2]))
             
         imgs_num = len(imgs)
-
+        
+        # shuffle imgs
+        np.random.seed(100)
+        imgs = np.random.permutation(imgs)
+        
         if self.test:
             self.imgs = imgs
         elif train:
