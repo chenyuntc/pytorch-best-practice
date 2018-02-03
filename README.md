@@ -4,7 +4,7 @@
 
 本文是文章[PyTorch实践指南](https://zhuanlan.zhihu.com/p/29024978)配套代码，请参照[知乎专栏原文](https://zhuanlan.zhihu.com/p/29024978)或者[对应的markdown文件](PyTorch实战指南.md)更好的了解而文件组织和代码细节。
 
-另： 本部分内容属于 《深度学习框架PyTorch：入门与实践》的配套代码，关于本书的更多信息，请查看[github](https://github.com/chenyuntc/pytorch-book)
+## 本部分内容属于 《深度学习框架PyTorch：入门与实践》一部分, 关于该书的源码，以及更多案例，请查看[github](https://github.com/chenyuntc/pytorch-book)
 
 ## 数据下载
 - 从[kaggle比赛官网](https://www.kaggle.com/c/dogs-vs-cats/data) 下载所需的数据
