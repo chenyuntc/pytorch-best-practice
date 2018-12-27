@@ -5,7 +5,7 @@ import time
 
 class BasicModule(t.nn.Module):
     '''
-    封装了nn.Module,主要是提供了save和load两个方法
+    简单封装了nn.Module,主要是提供了save和load两个方法
     '''
 
     def __init__(self):
@@ -21,10 +21,12 @@ class BasicModule(t.nn.Module):
     def save(self, name=None):
         '''
         保存模型，默认使用“模型名字+时间”作为文件名
+        如AlexNet_0710_23:57:29.pth
         '''
         if name is None:
             prefix = 'checkpoints/' + self.model_name + '_'
             name = time.strftime(prefix + '%m%d_%H:%M:%S.pth')
+        # 建议保存对应state_dict，而非直接保存整个Module/Optimizer对象
         t.save(self.state_dict(), name)
         return name
 

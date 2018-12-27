@@ -7,6 +7,10 @@ class Visualizer(object):
     '''
     封装了visdom的基本操作，但是你仍然可以通过`self.vis.function`
     调用原生的visdom接口
+    比如
+    self.text('hello visdom')
+    self.histogram(t.randn(1000))
+    self.line(t.arange(0, 10), t.arange(1, 11))
     '''
 
     def __init__(self, env='default', **kwargs):
@@ -28,11 +32,11 @@ class Visualizer(object):
         一次plot多个
         @params d: dict (name,value) i.e. ('loss',0.11)
         '''
-        for k, v in d.iteritems():
+        for k, v in d.items():
             self.plot(k, v)
 
     def img_many(self, d):
-        for k, v in d.iteritems():
+        for k, v in d.items():
             self.img(k, v)
 
     def plot(self, name, y,**kwargs):
@@ -41,7 +45,7 @@ class Visualizer(object):
         '''
         x = self.index.get(name, 0)
         self.vis.line(Y=np.array([y]), X=np.array([x]),
-                      win=unicode(name),
+                      win=name,
                       opts=dict(title=name),
                       update=None if x == 0 else 'append',
                       **kwargs

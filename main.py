@@ -1,8 +1,10 @@
 #coding:utf8
+from __future__ import print_function
 from config import opt
 import os
 import torch as t
 import models
+import pdb
 from data.dataset import DogCat
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
@@ -10,7 +12,15 @@ from torchnet import meter
 from utils.visualize import Visualizer
 from tqdm import tqdm
 
+import torch
+
+# at beginning of the script
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+current_GPU = torch.cuda.current_device()
+# device = torch.device("cuda:{}".format(current_GPU) if torch.cuda.is_available() else "cpu")
+
 def test(**kwargs):
+    pdb.set_trace()
     opt.parse(kwargs)
     import ipdb;
     ipdb.set_trace()
@@ -18,17 +28,23 @@ def test(**kwargs):
     model = getattr(models, opt.model)().eval()
     if opt.load_model_path:
         model.load(opt.load_model_path)
-    if opt.use_gpu: model.cuda()
+    #if opt.use_gpu:
+        # model.cuda()
+    device = torch.device("cuda:{}".format(current_GPU) if torch.cuda.is_available() and opt.use_gpu else "cpu")
+    model.to(device)
 
     # data
     train_data = DogCat(opt.test_data_root,test=True)
     test_dataloader = DataLoader(train_data,batch_size=opt.batch_size,shuffle=False,num_workers=opt.num_workers)
     results = []
     for ii,(data,path) in enumerate(test_dataloader):
-        input = t.autograd.Variable(data,volatile = True)
-        if opt.use_gpu: input = input.cuda()
+        # input = t.autograd.Variable(data,volatile = True)
+        with t.no_grad():
+            input = data.to(device)
+        # if opt.use_gpu: input = input.cuda()
         score = model(input)
-        probability = t.nn.functional.softmax(score)[:,0].data.tolist()
+        # probability = t.nn.functional.softmax(score)[:,0].data.tolist()
+        probability = t.nn.functional.softmax(score, dim=1)[:,0].tolist()
         # label = score.max(dim = 1)[1].data.tolist()
         
         batch_results = [(path_,probability_) for path_,probability_ in zip(path,probability) ]
@@ -36,7 +52,7 @@ def test(**kwargs):
         results += batch_results
     write_csv(results,opt.result_file)
 
-    return results
+    return len(results)
 
 def write_csv(results,file_name):
     import csv
@@ -46,6 +62,7 @@ def write_csv(results,file_name):
         writer.writerows(results)
     
 def train(**kwargs):
+    # 根据命令行参数更新配置
     opt.parse(kwargs)
     vis = Visualizer(opt.env)
 
@@ -53,22 +70,33 @@ def train(**kwargs):
     model = getattr(models, opt.model)()
     if opt.load_model_path:
         model.load(opt.load_model_path)
-    if opt.use_gpu: model.cuda()
+    # if opt.use_gpu:
+    #     model.cuda()
+    device = torch.device("cuda:{}".format(current_GPU) if torch.cuda.is_available() and opt.use_gpu else "cpu")
+    model.to(device)
 
     # step2: data
+    # 通过Dataloader加载数据， train参数控制 训练|验证
     train_data = DogCat(opt.train_data_root,train=True)
     val_data = DogCat(opt.train_data_root,train=False)
-    train_dataloader = DataLoader(train_data,opt.batch_size,
-                        shuffle=True,num_workers=opt.num_workers)
-    val_dataloader = DataLoader(val_data,opt.batch_size,
-                        shuffle=False,num_workers=opt.num_workers)
+    train_dataloader = DataLoader(
+                                train_data,
+                                opt.batch_size,
+                                shuffle=True,
+                                num_workers=opt.num_workers)
+
+    val_dataloader = DataLoader(
+                                val_data,
+                                opt.batch_size,
+                                shuffle=False,
+                                num_workers=opt.num_workers)
     
     # step3: criterion and optimizer
     criterion = t.nn.CrossEntropyLoss()
     lr = opt.lr
     optimizer = t.optim.Adam(model.parameters(),lr = lr,weight_decay = opt.weight_decay)
         
-    # step4: meters
+    # step4: meters 统计指标：平滑处理之后的损失，还有混淆矩阵
     loss_meter = meter.AverageValueMeter()
     confusion_matrix = meter.ConfusionMeter(2)
     previous_loss = 1e100
@@ -82,11 +110,11 @@ def train(**kwargs):
         for ii,(data,label) in tqdm(enumerate(train_dataloader),total=len(train_data)):
 
             # train model 
-            input = Variable(data)
-            target = Variable(label)
-            if opt.use_gpu:
-                input = input.cuda()
-                target = target.cuda()
+            input = data.to(device) # Variable(data)
+            target = label.to(device) # Variable(label)
+            # if opt.use_gpu:
+            #     input = input.cuda()
+            #     target = target.cuda()
 
             optimizer.zero_grad()
             score = model(input)
@@ -96,8 +124,10 @@ def train(**kwargs):
             
             
             # meters update and visualize
-            loss_meter.add(loss.data[0])
-            confusion_matrix.add(score.data, target.data)
+            # loss_meter.add(loss.data[0])
+            loss_meter.add(loss.item())
+            # confusion_matrix.add(score.data, target.data)
+            confusion_matrix.add(score.detach(), target.detach())
 
             if ii%opt.print_freq==opt.print_freq-1:
                 vis.plot('loss', loss_meter.value()[0])
@@ -135,13 +165,15 @@ def val(model,dataloader):
     confusion_matrix = meter.ConfusionMeter(2)
     for ii, data in enumerate(dataloader):
         input, label = data
-        val_input = Variable(input, volatile=True)
-        val_label = Variable(label.type(t.LongTensor), volatile=True)
+        with t.no_grad():
+            val_input = input # Variable(input, volatile=True)
+            val_label = label.type(t.LongTensor) # Variable(label.type(t.LongTensor), volatile=True)
         if opt.use_gpu:
             val_input = val_input.cuda()
             val_label = val_label.cuda()
         score = model(val_input)
-        confusion_matrix.add(score.data.squeeze(), label.type(t.LongTensor))
+        # confusion_matrix.add(score.data.squeeze(), label.type(t.LongTensor))
+        confusion_matrix.add(score.detach().squeeze(), label.type(t.LongTensor))
 
     model.train()
     cm_value = confusion_matrix.value()

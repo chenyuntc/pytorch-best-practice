@@ -1,0 +1,9 @@
+checkpoints/*
+data/test1/*
+data/train/*
+data/test1.zip
+data/train.zip
+__pycache__/*.pyc
+data/__pycache__/*.pyc
+models/__pycache__/*.pyc
+utils/__pycache__/*.pyc
